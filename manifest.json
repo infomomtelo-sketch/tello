@@ -1,0 +1,9 @@
+{
+  "name": "Tello",
+  "short_name": "Tello",
+  "display": "standalone",
+  "start_url": "./",
+  "background_color": "#0f172a",
+  "theme_color": "#1a7a4c",
+  "icons": [{ "src": "https://favicons.githubusercontent.com/infomomtelo-sketch", "sizes": "192x192", "type": "image/png" }]
+}
