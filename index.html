@@ -1,18 +1,37 @@
-<!doctype html><meta name=viewport content="width=device-width,initial-scale=1">
+<!doctype html>
+<html><head><meta name=viewport content="width=device-width,initial-scale=1">
 <meta name=apple-mobile-web-app-capable content=yes>
 <link rel=manifest href=manifest.json>
 <title>Tello</title>
-<style>body{margin:0;font-family:-apple-system;background:#0f172a;color:#fff;display:flex;flex-direction:column;height:100vh}header{padding:12px;border-bottom:1px solid #1e293b;display:flex;justify-content:space-between}main{flex:1;overflow:auto;padding:16px}#c div{margin:8px 0;padding:12px;border-radius:12px;max-width:85%} .u{background:#1a7a4c;margin-left:auto} .a{background:#1e293b} footer{display:flex;padding:12px;gap:8px;border-top:1px solid #1e293b} input{flex:1;padding:12px;border-radius:20px;border:none;background:#1e293b;color:#fff} button{border:none;background:#1a7a4c;color:#fff;padding:0 18px;border-radius:20px}</style>
-<header><b>Tello • Personal • Sonnet</b><span style=opacity:.6>like you asked</span></header>
-<main id=c><div class=a>Hey Eli — I'm Tello with attitude like Meta AI. Paste Anthropic key in settings below, then ask me anything like Claude Code. I’m private to you. I can be wrong — check important stuff.</div></main>
-<footer><input id=q placeholder="Ask Tello anything..."><button onclick=send()>Ask</button></footer>
+<style>
+body{margin:0;font-family:-apple-system;background:#0f172a;color:#fff;display:flex;flex-direction:column;height:100vh}
+header{padding:12px;border-bottom:1px solid #1e293b;display:flex;justify-content:space-between;align-items:center}
+#chat{flex:1;overflow:auto;padding:16px}
+.bubble{margin:8px 0;padding:12px 14px;border-radius:14px;max-width:88%;line-height:1.4;white-space:pre-wrap}
+.user{background:#1a7a4c;margin-left:auto}
+.ai{background:#1e293b}
+footer{display:flex;gap:8px;padding:12px;border-top:1px solid #1e293b}
+input{flex:1;padding:13px;border-radius:22px;border:none;background:#1e293b;color:#fff;font-size:16px}
+button{border:none;background:#1a7a4c;color:#fff;padding:0 20px;border-radius:22px;font-weight:600}
+small{opacity:.5}
+</style></head><body>
+<header><b>Tello • Personal • Sonnet</b><small id=stat>tap to set key</small></header>
+<div id=chat><div class="bubble ai">Hey Eli — I'm Tello with attitude like Meta AI. Set your Anthropic key by tapping top right, then ask anything. I can be wrong — check important stuff.</div></div>
+<footer><input id=q placeholder="Ask Tello anything..." onkeydown="if(event.key==='Enter')send()"><button onclick=send()>Ask</button></footer>
 <script>
-let key=localStorage.getItem('ak')||prompt('Paste Anthropic API key (sk-ant-...) - saved only on your phone:')||''; if(key) localStorage.setItem('ak',key);
+let chat=document.getElementById('chat');
+function getKey(){return localStorage.getItem('ak')||''}
+function setKey(){let k=prompt('Paste sk-ant-... key:'); if(k){localStorage.setItem('ak',k.trim()); document.getElementById('stat').textContent='key saved ✓';}}
+document.getElementById('stat').onclick=setKey;
+if(!getKey()) setTimeout(setKey,800);
 async function send(){
- let i=document.getElementById('q'); let t=i.value; if(!t) return; i.value='';
- let c=document.getElementById('c'); c.innerHTML+=`<div class=u>${t}</div><div class=a id=l>...</div>`; c.scrollTop=9e9;
- let r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2000,system:"You are Tello - personal Claude Code for Eli, owner of title22.app. Attitude: warm, playful, direct like Meta AI assistant, not corporate. You can do anything. Keep short when Eli is mobile in Fresno. Know context: title22.app stale worker prod 2026-09-07 dashboard, showMAR getter, Lite $29 Multi $79. Never say 'As an AI model'.",messages:[{role:'user',content:t}],stream:true})});
- let d=document.getElementById('l'); d.id=''; let txt=''; const dec=new TextDecoder();
- for await(let chunk of r.body){ let lines=dec.decode(chunk).split('\n'); for(let l of lines){ if(l.startsWith('data: ')){ try{ let j=JSON.parse(l.slice(6)); if(j.delta?.text) txt+=j.delta.text, d.textContent=txt, c.scrollTop=9e9 }catch{} } } }
+ let input=document.getElementById('q'); let text=input.value.trim(); if(!text) return;
+ let key=getKey(); if(!key){setKey(); return;}
+ input.value=''; chat.innerHTML+=`<div class="bubble user">${text}</div>`; let id='a'+Date.now(); chat.innerHTML+=`<div class="bubble ai" id="${id}">thinking...</div>`; chat.scrollTop=9e9;
+ try{
+  let r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2000,system:"You are Tello - personal Claude Code for Eli, Fresno, title22.app owner. Attitude warm, playful, direct like Meta AI, not corporate. Can do anything. Keep mobile answers short. You know stale worker prod 2026-09-07, showMAR getter.",messages:[{role:'user',content:text}]})});
+  let j=await r.json(); if(j.error) throw new Error(j.error.message); let out=j.content?.[0]?.text||'no text'; document.getElementById(id).textContent=out;
+ }catch(e){ document.getElementById(id).textContent='Error: '+e.message+'\nIf CORS, we need Worker version.'; }
+ chat.scrollTop=9e9;
 }
-</script>
+</script></body></html>
