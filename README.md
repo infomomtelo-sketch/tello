@@ -1,8 +1,11 @@
-# tello
+# Tello AI - Title 22 Engine for California RCFE
 
-Personal Claude Code with Sonnet + attitude like Meta AI.
-For Eli only — PWA green icon.
-Model: claude-sonnet-4-20250514
-Attitude: warm, direct, playful, tells you when you're looping. Short when driving on Ashlan / Blackstone.
+**Use Tello AI for your Facility**
 
-Can do anything: code title22.app, deploy workers, Tagalog, Fresno LiveScan, life.
+Powered by: Claude Sonnet 4 • Cloudflare Workers • Title 22 Engine
+
+- First site powered by Tello: [title-22.com](https://title-22.com)
+- Live: https://infomomtelo-sketch.github.io/tello/
+- Worker: https://tello-api.infomomtelo.workers.dev
+
+For Fresno 6-bed RCFE compliance, memory, floor plan checks.
