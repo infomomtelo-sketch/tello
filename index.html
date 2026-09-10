@@ -1,51 +1,38 @@
 <!DOCTYPE html>
-<html>
-<head>
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Tello</title>
-<style>
-body{margin:0;background:#0f172a;color:#fff;font-family:sans-serif}
-#chat{max-width:700px;margin:auto;padding:20px 20px 100px}
-.b{padding:12px 16px;border-radius:18px;margin:8px 0;max-width:85%;word-wrap:break-word}
-.u{background:#16a34a;margin-left:auto}
-.a{background:#1e293b}
-#bar{position:fixed;bottom:0;left:0;right:0;background:#0f172a;padding:12px;display:flex;gap:8px;border-top:1px solid #334155}
-input{flex:1;background:#1e293b;border:0;color:#fff;padding:14px 18px;border-radius:24px;outline:none}
-button{background:#16a34a;border:0;color:#fff;padding:14px 20px;border-radius:24px;font-weight:bold}
-</style>
-</head>
-<body>
-<div id="chat"><div class="b a">Tello connected to Worker ✅ Type something - it will send now.</div></div>
-<div id="bar"><input id="q" placeholder="Ask about Title 22..."><button id="send">Send</button></div>
+<html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>Tello Pro</title>
+<style>body{margin:0;background:#0f172a;color:#fff;font-family:sans-serif}#chat{max-width:700px;margin:auto;padding:20px 20px 140px}.b{padding:12px 16px;border-radius:18px;margin:8px 0;max-width:85%;word-wrap:break-word}.u{background:#16a34a;margin-left:auto}.a{background:#1e293b;white-space:pre-wrap}#bar{position:fixed;bottom:0;left:0;right:0;background:#0f172a;padding:12px;display:flex;gap:8px;border-top:1px solid #334155;flex-wrap:wrap}input{flex:1;background:#1e293b;border:0;color:#fff;padding:14px 18px;border-radius:24px;outline:none;min-width:150px}button{background:#16a34a;border:0;color:#fff;padding:14px 16px;border-radius:24px;font-weight:bold;cursor:pointer}#mem{max-width:700px;margin:auto;padding:10px;display:flex;gap:8px;flex-wrap:wrap}</style></head><body>
+<div id="mem"><button onclick="listMem()">🧠 Show Memory</button><label style="background:#334155;padding:10px 14px;border-radius:20px;cursor:pointer">📸 Upload Plan<input type="file" id="file" accept="image/*" hidden></label></div>
+<div id="chat"><div class="b a">Tello Pro with KV memory ✅\nKV: GOOD\nUpload floor plan or ask about Title 22</div></div>
+<div id="bar"><input id="q" placeholder="Ask or type facility name..."><button id="send">Send</button></div>
 <script>
 const WORKER="https://tello-api.infomomtelo.workers.dev";
-const chat=document.getElementById('chat');
-const input=document.getElementById('q');
+const chat=document.getElementById('chat'), input=document.getElementById('q');
 async function send(){
   const text=input.value.trim(); if(!text) return;
-  input.value='';
-  chat.innerHTML+=`<div class="b u">${text}</div>`;
-  chat.innerHTML+=`<div class="b a" id="tmp">...</div>`;
-  chat.scrollTop=chat.scrollHeight; window.scrollTo(0,99999);
+  input.value=''; chat.innerHTML+=`<div class="b u">${text}</div>`; chat.innerHTML+=`<div class="b a" id="tmp">Thinking...</div>`;
   try{
-    const r=await fetch(WORKER,{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({messages:[{role:'user',content:text}]})
-    });
-    const d=await r.json();
-    document.getElementById('tmp').remove();
-    let reply=d.content?.[0]?.text || d.reply || JSON.stringify(d).slice(0,800);
-    if(d.error) reply="Worker error: "+d.error;
-    chat.innerHTML+=`<div class="b a">${reply}</div>`;
-  }catch(e){
-    document.getElementById('tmp')?.remove();
-    chat.innerHTML+=`<div class="b a">Fetch failed: ${e.message}. Check WORKER URL is https://tello-api.infomomtelo.workers.dev</div>`;
-  }
+    const r=await fetch(WORKER,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:text}]})});
+    const d=await r.json(); document.getElementById('tmp').remove();
+    chat.innerHTML+=`<div class="b a">${d.reply||d.error||JSON.stringify(d)}</div>`;
+  }catch(e){ document.getElementById('tmp')?.remove(); chat.innerHTML+=`<div class="b a">Error ${e.message}</div>`;}
   window.scrollTo(0,99999);
 }
-document.getElementById('send').onclick=send;
-input.addEventListener('keydown',e=>{if(e.key==='Enter')send()});
-</script>
-</body>
-</html>
+async function listMem(){
+  const r=await fetch(WORKER+'/connections'); const d=await r.json();
+  chat.innerHTML+=`<div class="b a">Memory status: hasMemory=${d.hasMemory} hasFiles=${d.hasFiles}\nMCP: ${d.mcp}</div>`;
+  // list via mcp
+  const r2=await fetch(WORKER+'/mcp/call',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tool:'list_facilities',args:{}})});
+  const d2=await r2.json(); chat.innerHTML+=`<div class="b a">🧠 Memory:\n${d2.result}</div>`;
+}
+document.getElementById('file').addEventListener('change', async (e)=>{
+  const f=e.target.files[0]; if(!f) return;
+  chat.innerHTML+=`<div class="b u">📸 Uploading ${f.name}...</div><div class="b a" id="tmp">Analyzing Title 22...</div>`;
+  const fd=new FormData(); fd.append('file',f); fd.append('facility','fresno-rcfe');
+  try{
+    const r=await fetch(WORKER+'/upload',{method:'POST',body:fd});
+    const d=await r.json(); document.getElementById('tmp').remove();
+    chat.innerHTML+=`<div class="b a">📐 Analysis:\n${d.reply||d.error}</div>`;
+  }catch(err){ document.getElementById('tmp')?.remove(); chat.innerHTML+=`<div class="b a">Upload fail: ${err.message}</div>`;}
+});
+document.getElementById('send').onclick=send; input.addEventListener('keydown',e=>{if(e.key==='Enter')send()});
+</script></body></html>
