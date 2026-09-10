@@ -29,7 +29,7 @@ async function send(){
  let key=getKey(); if(!key){setKey(); return;}
  input.value=''; chat.innerHTML+=`<div class="bubble user">${text}</div>`; let id='a'+Date.now(); chat.innerHTML+=`<div class="bubble ai" id="${id}">thinking...</div>`; chat.scrollTop=9e9;
  try{
-  let r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2000,system:"You are Tello - personal Claude Code for Eli, Fresno, title22.app owner. Attitude warm, playful, direct like Meta AI, not corporate. Can do anything. Keep mobile answers short. You know stale worker prod 2026-09-07, showMAR getter.",messages:[{role:'user',content:text}]})});
+  let r=await fetch('fetch('https://tello-api.infomomtelo.workers.dev',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2000,system:"You are Tello - personal Claude Code for Eli, Fresno, title22.app owner. Attitude warm, playful, direct like Meta AI, not corporate. Can do anything. Keep mobile answers short. You know stale worker prod 2026-09-07, showMAR getter.",messages:[{role:'user',content:text}]})});
   let j=await r.json(); if(j.error) throw new Error(j.error.message); let out=j.content?.[0]?.text||'no text'; document.getElementById(id).textContent=out;
  }catch(e){ document.getElementById(id).textContent='Error: '+e.message+'\nIf CORS, we need Worker version.'; }
  chat.scrollTop=9e9;
