@@ -1,37 +1,51 @@
-<!doctype html>
-<html><head><meta name=viewport content="width=device-width,initial-scale=1">
-<meta name=apple-mobile-web-app-capable content=yes>
-<link rel=manifest href=manifest.json>
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Tello</title>
 <style>
-body{margin:0;font-family:-apple-system;background:#0f172a;color:#fff;display:flex;flex-direction:column;height:100vh}
-header{padding:12px;border-bottom:1px solid #1e293b;display:flex;justify-content:space-between;align-items:center}
-#chat{flex:1;overflow:auto;padding:16px}
-.bubble{margin:8px 0;padding:12px 14px;border-radius:14px;max-width:88%;line-height:1.4;white-space:pre-wrap}
-.user{background:#1a7a4c;margin-left:auto}
-.ai{background:#1e293b}
-footer{display:flex;gap:8px;padding:12px;border-top:1px solid #1e293b}
-input{flex:1;padding:13px;border-radius:22px;border:none;background:#1e293b;color:#fff;font-size:16px}
-button{border:none;background:#1a7a4c;color:#fff;padding:0 20px;border-radius:22px;font-weight:600}
-small{opacity:.5}
-</style></head><body>
-<header><b>Tello • Personal • Sonnet</b><small id=stat>tap to set key</small></header>
-<div id=chat><div class="bubble ai">Hey Eli — I'm Tello with attitude like Meta AI. Set your Anthropic key by tapping top right, then ask anything. I can be wrong — check important stuff.</div></div>
-<footer><input id=q placeholder="Ask Tello anything..." onkeydown="if(event.key==='Enter')send()"><button onclick=send()>Ask</button></footer>
+body{margin:0;background:#0f172a;color:#fff;font-family:sans-serif}
+#chat{max-width:700px;margin:auto;padding:20px 20px 100px}
+.b{padding:12px 16px;border-radius:18px;margin:8px 0;max-width:85%;word-wrap:break-word}
+.u{background:#16a34a;margin-left:auto}
+.a{background:#1e293b}
+#bar{position:fixed;bottom:0;left:0;right:0;background:#0f172a;padding:12px;display:flex;gap:8px;border-top:1px solid #334155}
+input{flex:1;background:#1e293b;border:0;color:#fff;padding:14px 18px;border-radius:24px;outline:none}
+button{background:#16a34a;border:0;color:#fff;padding:14px 20px;border-radius:24px;font-weight:bold}
+</style>
+</head>
+<body>
+<div id="chat"><div class="b a">Tello connected to Worker ✅ Type something - it will send now.</div></div>
+<div id="bar"><input id="q" placeholder="Ask about Title 22..."><button id="send">Send</button></div>
 <script>
-let chat=document.getElementById('chat');
-function getKey(){return localStorage.getItem('ak')||''}
-function setKey(){let k=prompt('Paste sk-ant-... key:'); if(k){localStorage.setItem('ak',k.trim()); document.getElementById('stat').textContent='key saved ✓';}}
-document.getElementById('stat').onclick=setKey;
-if(!getKey()) setTimeout(setKey,800);
+const WORKER="https://tello-api.infomomtelo.workers.dev";
+const chat=document.getElementById('chat');
+const input=document.getElementById('q');
 async function send(){
- let input=document.getElementById('q'); let text=input.value.trim(); if(!text) return;
- let key=getKey(); if(!key){setKey(); return;}
- input.value=''; chat.innerHTML+=`<div class="bubble user">${text}</div>`; let id='a'+Date.now(); chat.innerHTML+=`<div class="bubble ai" id="${id}">thinking...</div>`; chat.scrollTop=9e9;
- try{
-  let r=await fetch('fetch('https://tello-api.infomomtelo.workers.dev',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2000,system:"You are Tello - personal Claude Code for Eli, Fresno, title22.app owner. Attitude warm, playful, direct like Meta AI, not corporate. Can do anything. Keep mobile answers short. You know stale worker prod 2026-09-07, showMAR getter.",messages:[{role:'user',content:text}]})});
-  let j=await r.json(); if(j.error) throw new Error(j.error.message); let out=j.content?.[0]?.text||'no text'; document.getElementById(id).textContent=out;
- }catch(e){ document.getElementById(id).textContent='Error: '+e.message+'\nIf CORS, we need Worker version.'; }
- chat.scrollTop=9e9;
+  const text=input.value.trim(); if(!text) return;
+  input.value='';
+  chat.innerHTML+=`<div class="b u">${text}</div>`;
+  chat.innerHTML+=`<div class="b a" id="tmp">...</div>`;
+  chat.scrollTop=chat.scrollHeight; window.scrollTo(0,99999);
+  try{
+    const r=await fetch(WORKER,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({messages:[{role:'user',content:text}]})
+    });
+    const d=await r.json();
+    document.getElementById('tmp').remove();
+    let reply=d.content?.[0]?.text || d.reply || JSON.stringify(d).slice(0,800);
+    if(d.error) reply="Worker error: "+d.error;
+    chat.innerHTML+=`<div class="b a">${reply}</div>`;
+  }catch(e){
+    document.getElementById('tmp')?.remove();
+    chat.innerHTML+=`<div class="b a">Fetch failed: ${e.message}. Check WORKER URL is https://tello-api.infomomtelo.workers.dev</div>`;
+  }
+  window.scrollTo(0,99999);
 }
-</script></body></html>
+document.getElementById('send').onclick=send;
+input.addEventListener('keydown',e=>{if(e.key==='Enter')send()});
+</script>
+</body>
+</html>
