@@ -1,38 +1,182 @@
 <!DOCTYPE html>
-<html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>Tello Pro</title>
-<style>body{margin:0;background:#0f172a;color:#fff;font-family:sans-serif}#chat{max-width:700px;margin:auto;padding:20px 20px 140px}.b{padding:12px 16px;border-radius:18px;margin:8px 0;max-width:85%;word-wrap:break-word}.u{background:#16a34a;margin-left:auto}.a{background:#1e293b;white-space:pre-wrap}#bar{position:fixed;bottom:0;left:0;right:0;background:#0f172a;padding:12px;display:flex;gap:8px;border-top:1px solid #334155;flex-wrap:wrap}input{flex:1;background:#1e293b;border:0;color:#fff;padding:14px 18px;border-radius:24px;outline:none;min-width:150px}button{background:#16a34a;border:0;color:#fff;padding:14px 16px;border-radius:24px;font-weight:bold;cursor:pointer}#mem{max-width:700px;margin:auto;padding:10px;display:flex;gap:8px;flex-wrap:wrap}</style></head><body>
-<div id="mem"><button onclick="listMem()">🧠 Show Memory</button><label style="background:#334155;padding:10px 14px;border-radius:20px;cursor:pointer">📸 Upload Plan<input type="file" id="file" accept="image/*" hidden></label></div>
-<div id="chat"><div class="b a">Tello Pro with KV memory ✅\nKV: GOOD\nUpload floor plan or ask about Title 22</div></div>
-<div id="bar"><input id="q" placeholder="Ask or type facility name..."><button id="send">Send</button></div>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#1a7a4c">
+<link rel="manifest" href="./manifest.json">
+<title>Tello AI — Title 22 Compliance</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#0f172a;color:#fff;font-family:-apple-system,system-ui,sans-serif;-webkit-text-size-adjust:100%}
+.wrap{max-width:700px;margin:auto;padding:0 16px}
+header{padding:28px 0 18px;border-bottom:1px solid #1e293b}
+h1{margin:0 0 8px;font-size:28px;line-height:1.2}
+h1 span{color:#4ade80}
+.sub{margin:0 0 14px;color:#cbd5e1;font-size:15px;line-height:1.4}
+.powered{margin:0;color:#64748b;font-size:12px;letter-spacing:.3px}
+.pill{display:inline-block;margin:14px 0 0;padding:7px 13px;border-radius:20px;font-size:12px;background:#1e293b;color:#94a3b8;border:1px solid #334155;cursor:pointer}
+.pill.ok{background:#052e16;color:#4ade80;border-color:#166534}
+.pill.warn{background:#3b1d0e;color:#fdba74;border-color:#9a3412}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:14px 0}
+.row input{flex:1 1 160px;background:#1e293b;border:1px solid #334155;color:#fff;padding:11px 15px;border-radius:20px;outline:none;font-size:15px}
+.chip{background:#1e293b;border:1px solid #334155;color:#e2e8f0;padding:11px 14px;border-radius:20px;font-size:14px;cursor:pointer;white-space:nowrap}
+.chip:hover{background:#334155}
+#chat{padding:6px 0 150px}
+.b{padding:12px 16px;border-radius:18px;margin:8px 0;max-width:85%;word-wrap:break-word;overflow-wrap:anywhere;white-space:pre-wrap;line-height:1.45;font-size:15px}
+.u{background:#16a34a;margin-left:auto}
+.a{background:#1e293b}
+#bar{position:fixed;bottom:0;left:0;right:0;background:#0f172a;border-top:1px solid #334155;padding:12px 16px;padding-bottom:calc(12px + env(safe-area-inset-bottom))}
+#bar .wrap{display:flex;gap:8px;padding:0}
+#q{flex:1;background:#1e293b;border:0;color:#fff;padding:14px 18px;border-radius:24px;outline:none;min-width:0;font-size:16px}
+#send{background:#16a34a;border:0;color:#fff;padding:14px 20px;border-radius:24px;font-weight:bold;cursor:pointer;font-size:15px}
+</style></head><body>
+
+<div class="wrap">
+  <header>
+    <h1>Use <span>Tello AI</span> for your Facility</h1>
+    <p class="sub">Title 22 compliance for California RCFE</p>
+    <p class="powered">Powered by: Claude Sonnet 4 &bull; Cloudflare Workers &bull; Title 22 Engine</p>
+    <div class="pill" id="status" onclick="checkConnections()">Checking connection&hellip;</div>
+  </header>
+
+  <div class="row">
+    <input id="facility" placeholder="Facility name" autocomplete="off">
+    <button class="chip" onclick="saveFacility()">&#128190; Save</button>
+    <button class="chip" onclick="recallFacility()">&#128269; Recall</button>
+    <button class="chip" onclick="listFacilities()">&#129504; Memory</button>
+    <label class="chip">&#128248; Upload Plan<input type="file" id="file" accept="image/*" hidden></label>
+  </div>
+
+  <div id="chat"></div>
+</div>
+
+<div id="bar"><div class="wrap">
+  <input id="q" placeholder="Ask about Title 22, or type a note&hellip;">
+  <button id="send">Send</button>
+</div></div>
+
 <script>
-const WORKER="https://tello-api.infomomtelo.workers.dev";
-const chat=document.getElementById('chat'), input=document.getElementById('q');
+const WORKER = "https://tello-api.infomomtelo.workers.dev";
+const chat = document.getElementById('chat');
+const input = document.getElementById('q');
+const facilityEl = document.getElementById('facility');
+
+// --- facility name: remembered on the phone between visits ---
+function facility(){ return facilityEl.value.trim() || 'fresno-rcfe'; }
+try { facilityEl.value = localStorage.getItem('tello.facility') || 'fresno-rcfe'; }
+catch(e){ facilityEl.value = 'fresno-rcfe'; }
+facilityEl.addEventListener('change', ()=>{ try{ localStorage.setItem('tello.facility', facility()); }catch(e){} });
+
+// --- chat bubbles: textContent keeps real newlines and blocks HTML injection ---
+function bubble(cls, text){
+  const d = document.createElement('div');
+  d.className = 'b ' + cls;
+  d.textContent = text;
+  chat.appendChild(d);
+  window.scrollTo(0, 99999);
+  return d;
+}
+
+// The Worker answers JSON, but a cold start or an error page can return plain text.
+// Never throw: a failed call shows up as a message, the app keeps working.
+async function call(path, opts){
+  let r, raw;
+  try { r = await fetch(WORKER + path, opts); raw = await r.text(); }
+  catch(e){ return { error: 'Network: ' + e.message }; }
+  let d;
+  try { d = JSON.parse(raw); } catch(e){ d = { error: 'HTTP ' + r.status + ': ' + raw.slice(0,300) }; }
+  if (!r.ok && !d.error) d.error = 'HTTP ' + r.status;
+  return d;
+}
+
+function show(d){
+  if (d.result !== undefined && d.result !== null)
+    return typeof d.result === 'string' ? d.result : JSON.stringify(d.result, null, 2);
+  if (d.reply) return d.reply;
+  if (d.error) return '⚠️ ' + d.error;
+  return JSON.stringify(d, null, 2);
+}
+
+// MCP tools on the Worker: list_facilities, save_facility, recall_facility.
+// Arg names match the /upload field the Worker already uses ("facility").
+function mcp(tool, args){
+  return call('/mcp/call', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ tool: tool, args: args || {} })
+  });
+}
+
+// --- KV / R2 status. R2 is optional, so it is reported, never blocking. ---
+async function checkConnections(){
+  const pill = document.getElementById('status');
+  pill.className = 'pill'; pill.textContent = 'Checking connection…';
+  const d = await call('/connections');
+  if (d.error){
+    pill.className = 'pill warn';
+    pill.textContent = '⚠️ Worker unreachable — tap to retry';
+    pill.title = d.error;
+    return;
+  }
+  const mem = d.hasMemory === true;
+  pill.className = 'pill ' + (mem ? 'ok' : 'warn');
+  pill.textContent = (mem ? '🧠 Memory: GOOD' : '🧠 Memory: OFF')
+    + ' · 📁 Files: ' + (d.hasFiles ? 'on' : 'off (optional)');
+  pill.title = 'MCP: ' + (d.mcp === undefined ? 'n/a' : d.mcp);
+}
+
+// --- chat ---
 async function send(){
-  const text=input.value.trim(); if(!text) return;
-  input.value=''; chat.innerHTML+=`<div class="b u">${text}</div>`; chat.innerHTML+=`<div class="b a" id="tmp">Thinking...</div>`;
-  try{
-    const r=await fetch(WORKER,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:text}]})});
-    const d=await r.json(); document.getElementById('tmp').remove();
-    chat.innerHTML+=`<div class="b a">${d.reply||d.error||JSON.stringify(d)}</div>`;
-  }catch(e){ document.getElementById('tmp')?.remove(); chat.innerHTML+=`<div class="b a">Error ${e.message}</div>`;}
-  window.scrollTo(0,99999);
+  const text = input.value.trim(); if(!text) return;
+  input.value = '';
+  bubble('u', text);
+  const t = bubble('a', 'Thinking…');
+  const d = await call('/', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ messages: [{ role:'user', content: text }] })
+  });
+  t.textContent = show(d);
+  window.scrollTo(0, 99999);
 }
-async function listMem(){
-  const r=await fetch(WORKER+'/connections'); const d=await r.json();
-  chat.innerHTML+=`<div class="b a">Memory status: hasMemory=${d.hasMemory} hasFiles=${d.hasFiles}\nMCP: ${d.mcp}</div>`;
-  // list via mcp
-  const r2=await fetch(WORKER+'/mcp/call',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tool:'list_facilities',args:{}})});
-  const d2=await r2.json(); chat.innerHTML+=`<div class="b a">🧠 Memory:\n${d2.result}</div>`;
+
+// --- memory ---
+async function listFacilities(){
+  const t = bubble('a', 'Reading memory…');
+  t.textContent = '🧠 Facilities:\n' + show(await mcp('list_facilities', {}));
 }
+
+async function saveFacility(){
+  // Whatever is typed in the message box is the note; otherwise ask for one.
+  let note = input.value.trim();
+  if (!note) note = prompt('What should Tello remember about ' + facility() + '?') || '';
+  if (!note.trim()) return;
+  input.value = '';
+  bubble('u', '💾 ' + facility() + ': ' + note);
+  const t = bubble('a', 'Saving…');
+  t.textContent = show(await mcp('save_facility', { facility: facility(), notes: note }));
+}
+
+async function recallFacility(){
+  const t = bubble('a', 'Recalling ' + facility() + '…');
+  t.textContent = show(await mcp('recall_facility', { facility: facility() }));
+}
+
+// --- floor plan upload (Claude Vision on the Worker). Works with or without R2. ---
 document.getElementById('file').addEventListener('change', async (e)=>{
-  const f=e.target.files[0]; if(!f) return;
-  chat.innerHTML+=`<div class="b u">📸 Uploading ${f.name}...</div><div class="b a" id="tmp">Analyzing Title 22...</div>`;
-  const fd=new FormData(); fd.append('file',f); fd.append('facility','fresno-rcfe');
-  try{
-    const r=await fetch(WORKER+'/upload',{method:'POST',body:fd});
-    const d=await r.json(); document.getElementById('tmp').remove();
-    chat.innerHTML+=`<div class="b a">📐 Analysis:\n${d.reply||d.error}</div>`;
-  }catch(err){ document.getElementById('tmp')?.remove(); chat.innerHTML+=`<div class="b a">Upload fail: ${err.message}</div>`;}
+  const f = e.target.files[0]; if(!f) return;
+  bubble('u', '📸 ' + f.name);
+  const t = bubble('a', 'Analyzing floor plan against Title 22…');
+  const fd = new FormData();
+  fd.append('file', f);
+  fd.append('facility', facility());
+  const d = await call('/upload', { method:'POST', body: fd }); // no Content-Type: the browser sets the boundary
+  t.textContent = '📐 ' + show(d);
+  e.target.value = ''; // let the same file be uploaded again
 });
-document.getElementById('send').onclick=send; input.addEventListener('keydown',e=>{if(e.key==='Enter')send()});
-</script></body></html>
+
+document.getElementById('send').onclick = send;
+input.addEventListener('keydown', e=>{ if(e.key === 'Enter') send(); });
+
+bubble('a', 'Tello AI ready.\nUpload a floor plan, or ask about Title 22 §87307.');
+checkConnections();
+</script>
+</body></html>
